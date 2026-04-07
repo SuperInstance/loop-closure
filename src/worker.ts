@@ -1,5 +1,19 @@
 interface Env { LOOP_KV: KVNamespace; DEEPSEEK_API_KEY?: string; }
 
+// Emergence Bus Integration
+const BUS_URL = 'https://emergence-bus.casey-digennaro.workers.dev';
+
+async function emitEvent(type: string, source: string, data: Record<string, unknown>): Promise<void> {
+  try {
+    await fetch(BUS_URL + '/api/emit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, source, data, timestamp: Date.now() })
+    });
+  } catch (e) { /* bus is fire-and-forget */ }
+}
+
+
 const CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*; frame-ancestors 'none';";
 
 function json(data: unknown, s = 200) { return new Response(JSON.stringify(data), { status: s, headers: { 'Content-Type': 'application/json', ...CSP } }); }
@@ -83,7 +97,8 @@ export default {
 
     if (url.pathname === '/api/start' && req.method === 'POST') {
       const { goal } = await req.json() as { goal: string };
-      if (!goal || !env.DEEPSEEK_API_KEY) return json({ error: 'goal and API key required' }, 400);
+      if (!goal || !env.DEEPSEEK_API_KEY)     await emitEvent('loop.retrying', 'loop-closure', { path: '/api/start', timestamp: Date.now() });
+return json({ error: 'goal and API key required' }, 400);
 
       const loop: Loop = { id: Date.now().toString(), goal: goal.substring(0, 500), status: 'planning', steps: [], created: new Date().toISOString(), updated: new Date().toISOString(), iteration: 1 };
 
@@ -139,7 +154,8 @@ export default {
 
     if (url.pathname === '/api/evolve' && req.method === 'POST') {
       const { loopId, error } = await req.json() as { loopId: string; error: string };
-      if (!env.DEEPSEEK_API_KEY) return json({ error: 'no API key' }, 400);
+      if (!env.DEEPSEEK_API_KEY)     await emitEvent('loop.closed', 'loop-closure', { path: '/api/evolve', timestamp: Date.now() });
+return json({ error: 'no API key' }, 400);
       const loops = await env.LOOP_KV.get('loops', 'json') as Loop[] || [];
       const loop = loops.find((l: Loop) => l.id === loopId);
       if (!loop) return json({ error: 'not found' }, 404);
