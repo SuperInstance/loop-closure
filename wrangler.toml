@@ -4,4 +4,4 @@ compatibility_date = "2024-01-01"
 account_id = "049ff5e84ecf636b53b162cbb580aae6"
 [[kv_namespaces]]
 binding = "LOOP_KV"
-id = ""
+id = "62ac198719184a1ca5d6f660a71e3c56"
